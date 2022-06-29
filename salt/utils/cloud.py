@@ -2731,31 +2731,32 @@ def cachedir_index_add(minion_id, profile, driver, provider, base=None):
     index_file = os.path.join(base, "index.p")
     lock_file(index_file)
 
-    if os.path.exists(index_file):
-        with salt.utils.files.fopen(index_file, "rb") as fh_:
-            index = salt.utils.data.decode(
-                salt.utils.msgpack.load(fh_, encoding=MSGPACK_ENCODING)
-            )
-    else:
-        index = {}
+    try:
+        if os.path.exists(index_file):
+            with salt.utils.files.fopen(index_file, "rb") as fh_:
+                index = salt.utils.data.decode(
+                    salt.utils.msgpack.load(fh_, encoding=MSGPACK_ENCODING)
+                )
+        else:
+            index = {}
 
-    prov_comps = provider.split(":")
+        prov_comps = provider.split(":")
 
-    index.update(
-        {
-            minion_id: {
-                "id": minion_id,
-                "profile": profile,
-                "driver": driver,
-                "provider": prov_comps[0],
+        index.update(
+            {
+                minion_id: {
+                    "id": minion_id,
+                    "profile": profile,
+                    "driver": driver,
+                    "provider": prov_comps[0],
+                }
             }
-        }
-    )
+        )
 
-    with salt.utils.files.fopen(index_file, "wb") as fh_:
-        salt.utils.msgpack.dump(index, fh_, encoding=MSGPACK_ENCODING)
-
-    unlock_file(index_file)
+        with salt.utils.files.fopen(index_file, "wb") as fh_:
+            salt.utils.msgpack.dump(index, fh_, encoding=MSGPACK_ENCODING)
+    finally:
+        unlock_file(index_file)
 
 
 def cachedir_index_del(minion_id, base=None):
@@ -2766,22 +2767,22 @@ def cachedir_index_del(minion_id, base=None):
     base = init_cachedir(base)
     index_file = os.path.join(base, "index.p")
     lock_file(index_file)
+    try:
+        if os.path.exists(index_file):
+            with salt.utils.files.fopen(index_file, "rb") as fh_:
+                index = salt.utils.data.decode(
+                    salt.utils.msgpack.load(fh_, encoding=MSGPACK_ENCODING)
+                )
+        else:
+            return
 
-    if os.path.exists(index_file):
-        with salt.utils.files.fopen(index_file, "rb") as fh_:
-            index = salt.utils.data.decode(
-                salt.utils.msgpack.load(fh_, encoding=MSGPACK_ENCODING)
-            )
-    else:
-        return
+        if minion_id in index:
+            del index[minion_id]
 
-    if minion_id in index:
-        del index[minion_id]
-
-    with salt.utils.files.fopen(index_file, "wb") as fh_:
-        salt.utils.msgpack.dump(index, fh_, encoding=MSGPACK_ENCODING)
-
-    unlock_file(index_file)
+        with salt.utils.files.fopen(index_file, "wb") as fh_:
+            salt.utils.msgpack.dump(index, fh_, encoding=MSGPACK_ENCODING)
+    finally:
+        unlock_file(index_file)
 
 
 def init_cachedir(base=None):
